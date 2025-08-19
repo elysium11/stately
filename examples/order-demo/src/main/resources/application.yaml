@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/stately
+    username: stately
+    password: stately
+  jdbc:
+    template:
+      fetch-size: 100
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: true
+server:
+  port: 8080

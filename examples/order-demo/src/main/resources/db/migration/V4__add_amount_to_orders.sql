@@ -1,0 +1,1 @@
+alter table orders add column amount int not null default 0;
