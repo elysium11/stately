@@ -22,7 +22,7 @@ public final class TransitionContext<A> {
    */
   private final List<Action<A>> actions = new ArrayList<>();
   /**
-   * Произвольная мета: например, idempotencyKey / operationId.
+   * Произвольная мета: например, operationId.
    */
   private Map<String, Object> meta = new HashMap<>();
 
