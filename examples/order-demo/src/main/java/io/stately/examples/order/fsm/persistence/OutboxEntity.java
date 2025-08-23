@@ -7,8 +7,11 @@ import java.util.UUID;
 import org.postgresql.util.PGobject;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.WritingConverter;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Table;
 
 @Table("outbox")
@@ -20,11 +23,41 @@ public record OutboxEntity(
     MapPayload payload,
     String operationId,
     String status,
-    Instant createdAt
-) implements OutboxEvent {
+    Instant createdAt,
+    @Transient
+    boolean isNew
+) implements OutboxEvent, Persistable<UUID> {
+
+    /**
+     * Constructor for Spring Data JDBC - sets isNew to false since we're loading from DB
+     */
+    @PersistenceCreator
+    public OutboxEntity(
+        UUID id,
+        String aggregateType,
+        String aggregateId,
+        String eventType,
+        MapPayload payload,
+        String operationId,
+        String status,
+        Instant createdAt
+    ) {
+        this(id, aggregateType, aggregateId, eventType, payload, operationId, status, createdAt, false);
+    }
+
+  @Override
+  public UUID getId() {
+    return id;
+  }
+
+  @Override
+  public boolean isNew() {
+    return isNew;
+  }
 
   @WritingConverter
   public static final class MapPayloadWritingConverter implements Converter<MapPayload, PGobject> {
+
     private final ObjectMapper objectMapper;
 
     public MapPayloadWritingConverter(ObjectMapper objectMapper) {
@@ -47,6 +80,7 @@ public record OutboxEntity(
 
   @ReadingConverter
   public static final class MapPayloadReadingConverter implements Converter<PGobject, MapPayload> {
+
     private final ObjectMapper objectMapper;
 
     public MapPayloadReadingConverter(ObjectMapper objectMapper) {
@@ -55,7 +89,7 @@ public record OutboxEntity(
 
     @Override
     public MapPayload convert(PGobject pgObject) {
-      if (pgObject.getValue() == null) return null;
+      if (pgObject.getValue() == null) { return null; }
       try {
         return objectMapper.readValue(pgObject.getValue(), MapPayload.class);
       } catch (Exception e) {
