@@ -55,7 +55,7 @@ public class TransitionManager<A, S, E, ID> {
     }
   }
 
-  public void transitionInternal(ID aggregateId, E event, TransitionHandler<A, S, E> handler) {
+  private void transitionInternal(ID aggregateId, E event, TransitionHandler<A, S, E> handler) {
     // Оборачиваем всю логику перехода в транзакцию
     fsmTransactionManager.executeInTransaction(() -> {
       A agg = store.loadForUpdate(aggregateId);
@@ -105,7 +105,5 @@ public class TransitionManager<A, S, E, ID> {
 
       return null; // Void operation
     });
-
-    locking.unlock(aggregateType, aggregateId);
   }
 }
