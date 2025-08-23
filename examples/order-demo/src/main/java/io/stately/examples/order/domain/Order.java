@@ -1,7 +1,6 @@
 package io.stately.examples.order.domain;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import io.stately.examples.order.fsm.OrderState;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.annotation.Id;
@@ -14,7 +13,7 @@ public record Order(
     UUID id,
     @Version
     Integer version,
-    String state,
+    OrderState state,
     Instant createdAt,
     Instant updatedAt,
     Integer amount
@@ -22,14 +21,14 @@ public record Order(
 
   public static Order create() {
     var now = Instant.now();
-    return new Order(UUID.randomUUID(), null, "NEW", now, now, 0);
+    return new Order(UUID.randomUUID(), null, OrderState.NEW, now, now, 0);
   }
 
-  public Order withState(String newState) {
-    return new Order(this.id, this.version + 1, newState, this.createdAt, Instant.now(), this.amount);
+  public Order withState(OrderState newState) {
+    return new Order(this.id, this.version, newState, this.createdAt, Instant.now(), this.amount);
   }
 
   public Order withAmount(Integer newAmount) {
-    return new Order(this.id, this.version + 1, this.state, this.createdAt, Instant.now(), newAmount);
+    return new Order(this.id, this.version, this.state, this.createdAt, Instant.now(), newAmount);
   }
 }

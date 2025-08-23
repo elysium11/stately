@@ -3,9 +3,13 @@ package io.stately.examples.order.api;
 import io.stately.examples.order.domain.Order;
 import io.stately.examples.order.domain.OrderRepository;
 import io.stately.examples.order.service.OrderFsmService;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.UUID;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/orders")
@@ -27,7 +31,8 @@ public class OrderController {
   }
 
   @PostMapping("/{id}/submit")
-  public void submit(@PathVariable UUID id,
+  public void submit(
+      @PathVariable UUID id,
       @RequestHeader(value = "Idempotency-Key", required = false) String key,
       @RequestParam(value = "amount", defaultValue = "100") Integer amount
   ) {

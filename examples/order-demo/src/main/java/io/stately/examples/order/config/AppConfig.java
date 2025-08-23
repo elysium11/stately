@@ -5,9 +5,9 @@ import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import io.stately.core.LockingStrategy;
 import io.stately.core.StateGraph;
 import io.stately.core.TransitionManager;
+import io.stately.core.store.FsmTransactionManager;
 import io.stately.core.store.OutboxAppender;
 import io.stately.core.store.TransitionLogStore;
-import io.stately.core.store.FsmTransactionManager;
 import io.stately.examples.order.domain.Order;
 import io.stately.examples.order.domain.OrderRepository;
 import io.stately.examples.order.fsm.OrderEvent;
@@ -52,7 +52,12 @@ public class AppConfig {
   }
 
   @Bean
-  public OutboxRecoveryJob dispatcher(OutboxRepository repo, NamedParameterJdbcTemplate jdbc, ObjectMapper om, OperationWaiter waiter) {
+  public OutboxRecoveryJob dispatcher(
+      OutboxRepository repo,
+      NamedParameterJdbcTemplate jdbc,
+      ObjectMapper om,
+      OperationWaiter waiter
+  ) {
     return new OutboxRecoveryJob(repo, jdbc, om, waiter);
   }
 

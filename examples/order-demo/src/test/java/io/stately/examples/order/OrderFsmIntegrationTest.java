@@ -3,14 +3,14 @@ package io.stately.examples.order;
 import io.stately.examples.order.domain.Order;
 import io.stately.examples.order.domain.OrderRepository;
 import io.stately.examples.order.fsm.OrderState;
-import io.stately.examples.order.service.OrderFsmService;
 import io.stately.examples.order.it.BaseIntegrationTest;
+import io.stately.examples.order.service.OrderFsmService;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OrderFsmIntegrationTest extends BaseIntegrationTest {
 
@@ -24,10 +24,10 @@ class OrderFsmIntegrationTest extends BaseIntegrationTest {
     var id = createOrder();
 
     service.submit(id, "itest-1", 150);
-    assertThat(repo.findById(id)).get().extracting("state").isEqualTo(OrderState.CONFIRMED.name());
+    assertThat(repo.findById(id)).get().extracting(Order::state).isEqualTo(OrderState.CONFIRMED);
 
-//    service.ship(id);
-//    assertThat(repo.findById(id)).get().extracting("state").isEqualTo(OrderState.SHIPPED.name());
+    service.ship(id);
+    assertThat(repo.findById(id)).get().extracting(Order::state).isEqualTo(OrderState.SHIPPED);
 
     assertThatThrownBy(() -> service.cancel(id))
         .isInstanceOf(IllegalStateException.class)
@@ -40,12 +40,15 @@ class OrderFsmIntegrationTest extends BaseIntegrationTest {
 
     // Проверяем, что изначально amount = 0
     assertThat(repo.findById(id)).get().extracting("amount").isEqualTo(0);
+    var orderAmount = 250;
 
     // Выполняем переход с action
-    service.submit(id, "itest-actions", 250);
+    service.submit(id, "itest-actions", orderAmount);
 
     // Проверяем, что состояние изменилось
-    assertThat(repo.findById(id)).get().extracting("state").isEqualTo(OrderState.CONFIRMED.name());
+    assertThat(repo.findById(id)).get()
+        .returns(OrderState.CONFIRMED, Order::state)
+        .returns(orderAmount, Order::amount); // amount не изменился в текущей реализации
 
     // Примечание: в текущей реализации action не изменяет amount в БД,
     // но демонстрирует выполнение бизнес-логики во время перехода

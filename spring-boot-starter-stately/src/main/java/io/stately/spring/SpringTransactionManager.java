@@ -5,20 +5,22 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 public class SpringTransactionManager implements FsmTransactionManager {
 
-    private final TransactionTemplate transactionTemplate;
+  private final TransactionTemplate transactionTemplate;
 
-    public SpringTransactionManager(TransactionTemplate transactionTemplate) {
-        this.transactionTemplate = transactionTemplate;
-    }
+  public SpringTransactionManager(TransactionTemplate transactionTemplate) {
+    this.transactionTemplate = transactionTemplate;
+  }
 
-    @Override
-    public <T> T executeInTransaction(TransactionCallback<T> callback) {
-        return transactionTemplate.execute(status -> {
-            try {
-                return callback.doInTransaction();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
+  @Override
+  public <T> T executeInTransaction(TransactionCallback<T> callback) {
+    return transactionTemplate.execute(status -> {
+      try {
+        return callback.doInTransaction();
+      } catch (RuntimeException e) {
+        throw e;
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    });
+  }
 }

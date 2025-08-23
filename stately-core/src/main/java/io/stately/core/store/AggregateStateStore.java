@@ -6,7 +6,7 @@ public interface AggregateStateStore<A, S, ID> {
 
   S getState(A aggregate);
 
-  void setState(A aggregate, S newState);
+  A setState(A aggregate, S newState);
 
   void save(A aggregate);
 }

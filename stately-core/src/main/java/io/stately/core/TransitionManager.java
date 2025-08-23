@@ -2,10 +2,10 @@ package io.stately.core;
 
 import com.github.f4b6a3.uuid.UuidCreator;
 import io.stately.core.store.AggregateStateStore;
+import io.stately.core.store.FsmTransactionManager;
 import io.stately.core.store.OutboxAppender;
 import io.stately.core.store.OutboxEventImpl;
 import io.stately.core.store.TransitionLogStore;
-import io.stately.core.store.FsmTransactionManager;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -72,17 +72,17 @@ public class TransitionManager<A, S, E, ID> {
       }
 
       // Применяем действия к агрегату перед изменением состояния
+      A modifiedAgg = agg;
       for (var action : ctx.actions()) {
         try {
-          action.apply(agg);
+          modifiedAgg = action.apply(modifiedAgg);
         } catch (Exception e) {
           throw new RuntimeException("Action failed during transition", e);
         }
       }
 
       // Смена состояния агрегата (мутабельный/иммутабельный — решает реализация стора).
-      store.setState(agg, to);
-      store.save(agg);
+      store.save(store.setState(modifiedAgg, to));
 
       // Логируем сам переход.
       Map<String, Object> meta = ctx.meta();

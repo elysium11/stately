@@ -3,7 +3,6 @@ package io.stately.examples.order.service;
 import io.stately.core.StateGraph;
 import io.stately.core.TransitionManager;
 import io.stately.examples.order.domain.Order;
-import io.stately.examples.order.domain.OrderRepository;
 import io.stately.examples.order.fsm.OrderEvent;
 import io.stately.examples.order.fsm.OrderState;
 import io.stately.examples.order.outbox.OutboxEventType;
@@ -12,31 +11,22 @@ import io.stately.examples.order.sync.OperationWaiter;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class OrderFsmService {
 
-  private final OrderRepository repo;
   private final TransitionManager<Order, OrderState, OrderEvent, UUID> tm;
   private final OperationWaiter waiter;
   private final StateGraph<OrderState, OrderEvent> graph;
 
-  public OrderFsmService(
-      OrderRepository repo,
-      TransitionManager<Order, OrderState, OrderEvent, UUID> tm,
-      OperationWaiter waiter,
-      StateGraph<OrderState, OrderEvent> graph
-  ) {
-    this.repo = repo;
-    this.tm = tm;
-    this.waiter = waiter;
-    this.graph = graph;
-  }
-
   public UUID submit(UUID id, String idempotencyKey, Integer orderAmount) {
     // 1) Синхронный запрос — будем ждать operationId
-    String operationId = idempotencyKey; // можно сгенерировать отдельно
+    // можно сгенерировать отдельно
 
     // 2) FSM: сменим состояние, залогируем переход и положим команду во внешку в outbox (emit)
     tm.transition(
@@ -47,26 +37,24 @@ public class OrderFsmService {
             // В реальном случае здесь может быть валидация, логирование, etc.
             System.out.println("[DEBUG_LOG] Processing order with amount: " + orderAmount +
                                    ", current order amount: " + order.amount());
-
-            // Примечание: для полноценной работы с immutable records
-            // нужно расширить архитектуру для возврата новой версии агрегата
+            return order.withAmount(orderAmount);
           });
 
-          ctx.metadata(Map.of("idempotencyKey", operationId));
+          ctx.metadata(Map.of("idempotencyKey", idempotencyKey));
           ctx.emit(
               OutboxEventType.CALL_PAYMENT_PROVIDER_AUTHORIZE,
               PaymentAuthorizationPayload.of(id, orderAmount, "USD"),
-              operationId
+              idempotencyKey
           );
         }
     );
 
     // 3) Ждём результат обработки outbox-диспетчером (вариант C)
     try {
-      var res = waiter.await(operationId, Duration.ofSeconds(5));
-      if (!res.success) {
+      var res = waiter.await(idempotencyKey, Duration.ofSeconds(5));
+      if (!res.success()) {
         // При желании: отдельный компенсационный переход
-        throw new IllegalStateException("External failed: " + res.details);
+        throw new IllegalStateException("External failed: " + res.details());
       }
       return id;
     } catch (InterruptedException ie) {
@@ -80,5 +68,14 @@ public class OrderFsmService {
   // Примеры других переходов — уже можно без ручных save:
   public void cancel(UUID id) {
     tm.transition(id, OrderEvent.CANCEL, ctx -> { /* guards/meta as needed */ });
+  }
+
+  public void ship(UUID id) {
+    tm.transition(
+        id, OrderEvent.SHIP, ctx -> {
+          // Optional: Add any shipping-specific metadata or actions
+          ctx.metadata(Map.of("shippedAt", System.currentTimeMillis()));
+        }
+    );
   }
 }
