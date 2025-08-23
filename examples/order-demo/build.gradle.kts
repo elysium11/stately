@@ -8,6 +8,7 @@ val lombokVer = "1.18.38"
 dependencies {
     compileOnly("org.projectlombok:lombok:$lombokVer")
     annotationProcessor("org.projectlombok:lombok:$lombokVer")
+    compileOnly("org.jetbrains:annotations:24.1.0")
     implementation(project(":stately-core"))
     implementation(project(":spring-boot-starter-stately"))
     implementation("org.springframework.boot:spring-boot-starter-web")

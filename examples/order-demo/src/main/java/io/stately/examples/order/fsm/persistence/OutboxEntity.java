@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stately.core.store.OutboxEvent;
 import java.time.Instant;
 import java.util.UUID;
+import org.jetbrains.annotations.NotNull;
 import org.postgresql.util.PGobject;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.annotation.Id;
@@ -65,7 +66,7 @@ public record OutboxEntity(
     }
 
     @Override
-    public PGobject convert(MapPayload source) {
+    public PGobject convert(@NotNull MapPayload source) {
       try {
         PGobject jsonObject = new PGobject();
         // Use "json" if your column type is JSON; use "jsonb" if it's JSONB.
