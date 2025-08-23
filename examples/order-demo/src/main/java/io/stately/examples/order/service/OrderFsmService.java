@@ -30,7 +30,7 @@ public class OrderFsmService {
 
     // 2) FSM: сменим состояние, залогируем переход и положим команду во внешку в outbox (emit)
     tm.transition(
-        id, OrderEvent.SUBMIT, ctx -> {
+        id, OrderEvent.SUBMIT, idempotencyKey, ctx -> {
           // Демонстрируем использование action для бизнес-логики
           ctx.action(order -> {
             // Для immutable record это демонстрация концепции
@@ -39,8 +39,6 @@ public class OrderFsmService {
                                    ", current order amount: " + order.amount());
             return order.withAmount(orderAmount);
           });
-
-          ctx.metadata(Map.of("idempotencyKey", idempotencyKey));
           ctx.emit(
               OutboxEventType.CALL_PAYMENT_PROVIDER_AUTHORIZE,
               PaymentAuthorizationPayload.of(id, orderAmount, "USD"),

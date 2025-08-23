@@ -46,16 +46,30 @@ public class TransitionManager<A, S, E, ID> {
   }
 
   public void transition(ID aggregateId, E event, TransitionHandler<A, S, E> handler) {
+    transition(aggregateId, event, null, handler);
+  }
+
+  public void transition(
+      ID aggregateId,
+      E event,
+      String idempotencyKey,
+      TransitionHandler<A, S, E> handler
+  ) {
     Objects.requireNonNull(aggregateId);
     locking.lock(aggregateType, aggregateId);
     try {
-      transitionInternal(aggregateId, event, handler);
+      transitionInternal(aggregateId, event, idempotencyKey, handler);
     } finally {
       locking.unlock(aggregateType, aggregateId);
     }
   }
 
-  private void transitionInternal(ID aggregateId, E event, TransitionHandler<A, S, E> handler) {
+  private void transitionInternal(
+      ID aggregateId,
+      E event,
+      String idempotencyKey,
+      TransitionHandler<A, S, E> handler
+  ) {
     // Оборачиваем всю логику перехода в транзакцию
     fsmTransactionManager.executeInTransaction(() -> {
       A agg = store.loadForUpdate(aggregateId);
@@ -86,8 +100,7 @@ public class TransitionManager<A, S, E, ID> {
 
       // Логируем сам переход.
       Map<String, Object> meta = ctx.meta();
-      String idk = meta != null ? (String) meta.getOrDefault("idempotencyKey", null) : null;
-      logStore.record(aggregateType, aggregateId, from, to, event, Instant.now(), meta, idk);
+      logStore.record(aggregateType, aggregateId, from, to, event, Instant.now(), meta, idempotencyKey);
 
       // Записываем декларации эффектов в outbox (в той же транзакции).
       for (var em : ctx.emissions()) {
