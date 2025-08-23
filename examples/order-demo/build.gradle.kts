@@ -17,6 +17,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core:11.11.0")
     implementation("org.flywaydb:flyway-database-postgresql:11.11.0")
     implementation("com.google.guava:guava:33.4.8-jre")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-guava:2.19.2")
 
     implementation("org.postgresql:postgresql:42.7.4")
 

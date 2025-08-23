@@ -1,5 +1,7 @@
 package io.stately.examples.order.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.annotation.Id;

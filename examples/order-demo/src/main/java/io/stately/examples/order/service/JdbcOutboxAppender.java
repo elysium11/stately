@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.stately.core.store.OutboxAppender;
 import io.stately.core.store.OutboxEvent;
 import io.stately.examples.order.fsm.persistence.OutboxEntity;
+import io.stately.examples.order.fsm.persistence.MapPayload;
 import io.stately.examples.order.fsm.persistence.OutboxRepository;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +22,11 @@ public class JdbcOutboxAppender implements OutboxAppender {
   public void append(OutboxEvent outboxEvent) {
     try {
       var outboxEntity = new OutboxEntity(
-          null, // id will be generated
+          outboxEvent.id(), // id will be generated
           outboxEvent.aggregateType(),
           String.valueOf(outboxEvent.aggregateId()),
           outboxEvent.eventType(),
-          om.convertValue(outboxEvent.payload(), new TypeReference<>() { }),
+          MapPayload.of(om.convertValue(outboxEvent.payload(), new TypeReference<>() { })),
           outboxEvent.operationId(),
           "NEW",
           Instant.now()

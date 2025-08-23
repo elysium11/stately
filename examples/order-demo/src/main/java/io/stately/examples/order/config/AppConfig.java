@@ -1,6 +1,7 @@
 package io.stately.examples.order.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import io.stately.core.LockingStrategy;
 import io.stately.core.StateGraph;
 import io.stately.core.TransitionManager;
@@ -81,5 +82,10 @@ public class AppConfig {
       @Override
       public void unlock(String aggregateType, UUID aggregateId) { }
     };
+  }
+
+  @Bean
+  public GuavaModule guavaModule() {
+    return new GuavaModule();
   }
 }

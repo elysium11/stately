@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS outbox (
-  id            bigserial primary key,
+  id             uuid primary key,
   aggregate_type varchar(50) not null,
   aggregate_id   varchar(50) not null,
   event_type     varchar(100) not null,

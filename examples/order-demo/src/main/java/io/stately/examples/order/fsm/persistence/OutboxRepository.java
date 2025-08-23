@@ -2,6 +2,7 @@ package io.stately.examples.order.fsm.persistence;
 
 import io.stately.examples.order.fsm.persistence.OutboxEntity;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -13,5 +14,5 @@ public interface OutboxRepository extends CrudRepository<OutboxEntity, Long> {
 
   @Modifying
   @Query("UPDATE outbox SET status = :status WHERE id = :id")
-  void updateStatusById(Long id, String status);
+  void updateStatusById(UUID id, String status);
 }
