@@ -7,6 +7,7 @@ import io.stately.core.StateGraph;
 import io.stately.core.TransitionManager;
 import io.stately.core.store.FsmTransactionManager;
 import io.stately.core.store.OutboxAppender;
+import io.stately.core.store.OutboxProcessor;
 import io.stately.core.store.TransitionLogStore;
 import io.stately.examples.order.domain.Order;
 import io.stately.examples.order.domain.OrderRepository;
@@ -17,13 +18,13 @@ import io.stately.examples.order.fsm.persistence.OutboxRepository;
 import io.stately.examples.order.service.JdbcOrderAggregateStore;
 import io.stately.examples.order.service.JdbcOutboxAppender;
 import io.stately.examples.order.service.JdbcTransitionLogStore;
+import io.stately.examples.order.service.OutboxDispatcher;
 import io.stately.examples.order.service.OutboxRecoveryJob;
 import io.stately.examples.order.sync.OperationWaiter;
 import io.stately.spring.SpringTransactionManager;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -52,13 +53,20 @@ public class AppConfig {
   }
 
   @Bean
-  public OutboxRecoveryJob dispatcher(
+  public OutboxProcessor outboxDispatcher(
       OutboxRepository repo,
-      NamedParameterJdbcTemplate jdbc,
       ObjectMapper om,
       OperationWaiter waiter
   ) {
-    return new OutboxRecoveryJob(repo, jdbc, om, waiter);
+    return new OutboxDispatcher(repo, om, waiter);
+  }
+
+  @Bean
+  public OutboxRecoveryJob dispatcher(
+      OutboxRepository repo,
+      OutboxProcessor outboxDispatcher
+  ) {
+    return new OutboxRecoveryJob(repo, outboxDispatcher);
   }
 
   @Bean
@@ -72,10 +80,11 @@ public class AppConfig {
       JdbcOrderAggregateStore store,
       TransitionLogStore<OrderState, OrderEvent> log,
       OutboxAppender outbox,
+      OutboxProcessor outboxDispatcher,
       LockingStrategy<UUID> lock,
       FsmTransactionManager fsmTransactionManager
   ) {
-    return new TransitionManager<>("Order", graph, store, log, outbox, lock, fsmTransactionManager);
+    return new TransitionManager<>("Order", graph, store, log, outbox, outboxDispatcher, lock, fsmTransactionManager);
   }
 
   @Bean
