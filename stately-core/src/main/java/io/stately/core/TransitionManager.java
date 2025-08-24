@@ -4,9 +4,13 @@ import com.github.f4b6a3.uuid.UuidCreator;
 import io.stately.core.store.AggregateStateStore;
 import io.stately.core.store.FsmTransactionManager;
 import io.stately.core.store.OutboxAppender;
+import io.stately.core.store.OutboxEvent;
 import io.stately.core.store.OutboxEventImpl;
+import io.stately.core.store.OutboxProcessor;
 import io.stately.core.store.TransitionLogStore;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -17,6 +21,7 @@ public class TransitionManager<A, S, E, ID> {
   private final AggregateStateStore<A, S, ID> store;
   private final TransitionLogStore<S, E> logStore;
   private final OutboxAppender outbox;       // <— новое
+  private final OutboxProcessor outboxProcessor;
   private final LockingStrategy<ID> locking;
   private final FsmTransactionManager fsmTransactionManager;
 
@@ -26,6 +31,7 @@ public class TransitionManager<A, S, E, ID> {
       AggregateStateStore<A, S, ID> store,
       TransitionLogStore<S, E> logStore,
       OutboxAppender outbox,
+      OutboxProcessor outboxProcessor,
       LockingStrategy<ID> locking,
       FsmTransactionManager fsmTransactionManager
   ) {
@@ -34,6 +40,7 @@ public class TransitionManager<A, S, E, ID> {
     this.store = Objects.requireNonNull(store);
     this.logStore = Objects.requireNonNull(logStore);
     this.outbox = outbox == null ? new OutboxAppender.Noop() : outbox;
+    this.outboxProcessor = outboxProcessor == null ? events -> { } : outboxProcessor;
     this.locking = Objects.requireNonNull(locking);
     this.fsmTransactionManager = fsmTransactionManager == null ?
         new FsmTransactionManager.Noop() : fsmTransactionManager;
@@ -57,21 +64,27 @@ public class TransitionManager<A, S, E, ID> {
   ) {
     Objects.requireNonNull(aggregateId);
     locking.lock(aggregateType, aggregateId);
+    List<OutboxEvent> events;
     try {
-      transitionInternal(aggregateId, event, idempotencyKey, handler);
+      events = transitionInternal(aggregateId, event, idempotencyKey, handler);
     } finally {
       locking.unlock(aggregateType, aggregateId);
     }
+    try {
+      outboxProcessor.processOutboxEvents(events);
+    } catch (Exception ex) {
+      // Фоллбек: обработка отложится до фонового процесса
+    }
   }
 
-  private void transitionInternal(
+  private List<OutboxEvent> transitionInternal(
       ID aggregateId,
       E event,
       String idempotencyKey,
       TransitionHandler<A, S, E> handler
   ) {
     // Оборачиваем всю логику перехода в транзакцию
-    fsmTransactionManager.executeInTransaction(() -> {
+    return fsmTransactionManager.executeInTransaction(() -> {
       A agg = store.loadForUpdate(aggregateId);
       S from = store.getState(agg);
       S to = graph.nextByEvent(from, event)
@@ -103,20 +116,21 @@ public class TransitionManager<A, S, E, ID> {
       logStore.record(aggregateType, aggregateId, from, to, event, Instant.now(), meta, idempotencyKey);
 
       // Записываем декларации эффектов в outbox (в той же транзакции).
+      List<OutboxEvent> events = new ArrayList<>();
       for (var em : ctx.emissions()) {
-        outbox.append(
-            new OutboxEventImpl(
-                UuidCreator.getTimeOrderedEpoch(),
-                aggregateType,
-                aggregateId,
-                em.type(),
-                em.payload(),
-                em.operationId()
-            )
+        var outboxEvent = new OutboxEventImpl(
+            UuidCreator.getTimeOrderedEpoch(),
+            aggregateType,
+            aggregateId,
+            em.type(),
+            em.payload(),
+            em.operationId()
         );
+        outbox.append(outboxEvent);
+        events.add(outboxEvent);
       }
 
-      return null; // Void operation
+      return events;
     });
   }
 }
